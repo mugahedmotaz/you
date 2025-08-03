@@ -4,7 +4,8 @@ services:
     env: node
     plan: free
     buildCommand: |
-      npm install --include=dev 
+      npm install
+      npm install --save-dev typescript @types/node
       pip install yt-dlp
       npm run build
     startCommand: "npm start"
