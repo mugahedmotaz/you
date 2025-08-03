@@ -183,7 +183,16 @@ export function downloadVideo(options: DownloadOptions): Promise<{ stream: Reada
     }
 
     const size = bestFormat.filesize || bestFormat.filesize_approx || 0;
-    ytdlpArgs = ["--format", bestFormat.format_id, "--output", "-", "--no-warnings", videoUrl];
+    ytdlpArgs = [
+      "--format", bestFormat.format_id,
+      "--output", "-",
+      "--no-warnings",
+      "--no-check-certificate",
+      "--socket-timeout", "30",
+      "--retries", "3",
+      "--fragment-retries", "3",
+      videoUrl
+    ];
 
     console.log("Starting yt-dlp with args:", ytdlpArgs);
 
@@ -199,13 +208,25 @@ export function downloadVideo(options: DownloadOptions): Promise<{ stream: Reada
       console.error("yt-dlp stderr:", data.toString())
     })
 
+    let hasResolved = false;
+
     ytdlp.on("close", (code) => {
-      if (code !== 0) {
+      if (!hasResolved && code !== 0) {
         reject(new Error(`yt-dlp exited with code ${code}`))
       }
     })
 
+    // Set a timeout for the entire operation
+    const timeoutId = setTimeout(() => {
+      if (!hasResolved) {
+        ytdlp.kill('SIGKILL');
+        reject(new Error('Download timeout - the video might be too long or the connection is slow'));
+      }
+    }, 300000); // 5 minutes timeout
+
     // Return both stream and size
+    hasResolved = true;
+    clearTimeout(timeoutId);
     resolve({ stream: ytdlp.stdout, size });
     } catch (error) {
       reject(error);

@@ -200,7 +200,15 @@ export default function HomePage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || "Download failed")
+        // Create a more detailed error message
+        let errorMessage = errorData.error || "Download failed";
+        if (errorData.suggestion) {
+          errorMessage += ` - ${errorData.suggestion}`;
+        }
+        if (errorData.details && errorData.details !== errorData.error) {
+          errorMessage += ` (${errorData.details})`;
+        }
+        throw new Error(errorMessage);
       }
 
       if (!response.body) {

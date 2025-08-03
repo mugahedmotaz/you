@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { downloadVideo, sanitizeFilename } from "@/lib/youtube-downloader"
 
+// Increase timeout for long video downloads
+export const maxDuration = 300; // 5 minutes
+
 export async function POST(request: NextRequest) {
   try {
     const { videoId, title, type, quality, url } = await request.json()
@@ -35,21 +38,38 @@ export async function POST(request: NextRequest) {
     if (size > 0) {
       headers.set("Content-Length", size.toString())
     }
-    // Expose headers so the browser can read them
-    headers.set("Access-Control-Expose-Headers", "Content-Disposition, Content-Length")
+    // Headers for better streaming support
+    headers.set("Accept-Ranges", "bytes")
+    headers.set("Transfer-Encoding", "chunked")
+    headers.set("Access-Control-Expose-Headers", "Content-Disposition, Content-Length, Accept-Ranges")
     headers.set("Cache-Control", "no-cache")
     headers.set("Access-Control-Allow-Origin", "*")
+    headers.set("Connection", "keep-alive")
 
     // تحويل stream إلى Response
     return new Response(downloadStream as any, { headers });
   } catch (error) {
     console.error("Download error:", error)
 
+    // Provide more specific error messages
+    let errorMessage = "Download failed";
+    let suggestion = "Make sure yt-dlp is installed: pip install yt-dlp";
+    
+    if (error instanceof Error) {
+      if (error.message.includes('timeout')) {
+        errorMessage = "Download timeout";
+        suggestion = "The video is too long or your connection is slow. Try a shorter video or lower quality.";
+      } else if (error.message.includes('format')) {
+        errorMessage = "Video format not available";
+        suggestion = "This video format is not available. Try a different quality setting.";
+      }
+    }
+
     return NextResponse.json(
       {
-        error: "Download failed",
+        error: errorMessage,
         details: error instanceof Error ? error.message : "Unknown error",
-        suggestion: "Make sure yt-dlp is installed: pip install yt-dlp",
+        suggestion: suggestion,
       },
       { status: 500 },
     )

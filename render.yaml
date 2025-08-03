@@ -3,11 +3,21 @@ services:
     name: youtube-downloader-app
     env: node
     plan: free
-    buildCommand: pip install yt-dlp && npm install && npm run build
+    buildCommand: |
+      pip install yt-dlp
+      rm -f package-lock.json pnpm-lock.yaml
+      npm install --force
+      npm run build
     startCommand: "npm start"
     envVars:
       - key: NODE_ENV
         value: production
       - key: YOUTUBE_API_KEY
         sync: false
+      - key: YTDLP_SOCKET_TIMEOUT
+        value: "30"
+      - key: YTDLP_RETRIES
+        value: "3"
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=2048"
 
