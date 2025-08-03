@@ -3,15 +3,11 @@ services:
     name: youtube-downloader-app
     env: node
     plan: free
-    buildCommand: |
-      npm install
-      pip install yt-dlp
-      npm run build
+    buildCommand: pip install yt-dlp && npm install && npm run build
     startCommand: "npm start"
     envVars:
       - key: NODE_ENV
         value: production
       - key: YOUTUBE_API_KEY
         sync: false
-      - key: YTDLP_PATH
-        value: /usr/bin/yt-dlp # Default path for yt-dlp on Render's environment
+
