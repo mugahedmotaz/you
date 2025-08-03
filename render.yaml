@@ -4,9 +4,8 @@ services:
     env: node
     plan: free
     buildCommand: |
+      npm install 
       pip install yt-dlp
-      rm -f package-lock.json pnpm-lock.yaml
-      npm install --force
       npm run build
     startCommand: "npm start"
     envVars:
