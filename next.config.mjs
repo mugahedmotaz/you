@@ -11,11 +11,13 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  env: {
+    YTDLP_PATH: process.env.YTDLP_PATH, // ✅ هنا أضفنا المتغير
+  },
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       '@': path.resolve(process.cwd()),
-
     }
     return config
   },
