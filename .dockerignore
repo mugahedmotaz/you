@@ -6,5 +6,14 @@ node_modules
 README.md
 .gitignore
 
-# Keep bin directory
+# Keep important files for deployment
 !bin/
+!scripts/
+!Dockerfile
+!package.json
+!package-lock.json
+!next.config.mjs
+!tsconfig.json
+!tailwind.config.ts
+!components.json
+!middleware.ts
