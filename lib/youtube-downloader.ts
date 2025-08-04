@@ -1,5 +1,6 @@
 import { spawn } from "child_process"
 import type { Readable } from "stream"
+import { getYtdlpPath } from "./ytdlp-path"
 
 export interface DownloadOptions {
   videoId: string
@@ -42,7 +43,9 @@ export async function getVideoFormats(videoId: string): Promise<VideoFormat[]> {
   return new Promise((resolve, reject) => {
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`
 
-    const ytdlpPath = process.env.YTDLP_PATH || "yt-dlp";
+    const ytdlpPath = getYtdlpPath();
+    console.log("getVideoFormats using yt-dlp path:", ytdlpPath);
+    
     const ytdlp = spawn(ytdlpPath, [
       "--list-formats",
       "--no-warnings",
@@ -119,8 +122,7 @@ export async function getVideoFormats(videoId: string): Promise<VideoFormat[]> {
 
 // Download video using yt-dlp
 export function downloadVideo(options: DownloadOptions): Promise<{ stream: Readable; size: number }> {
-  return new Promise(async (resolve, reject) => {
-    try {
+  return new Promise((resolve, reject) => {
     const { videoId, quality, format } = options
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`
 
@@ -137,99 +139,98 @@ export function downloadVideo(options: DownloadOptions): Promise<{ stream: Reada
         "--output",
         "-",
         "--no-warnings",
+        "--no-check-certificate",
         videoUrl,
       ]
     } else {
       // تحميل الفيديو
-      let formatSelector = "best"
-
+      let formatSelector = "best[ext=mp4]"
       if (quality === "1080p") {
-        formatSelector = "best[height<=1080]"
+        formatSelector = "best[height<=1080][ext=mp4]"
       } else if (quality === "720p") {
-        formatSelector = "best[height<=720]"
+        formatSelector = "best[height<=720][ext=mp4]"
       } else if (quality === "480p") {
-        formatSelector = "best[height<=480]"
+        formatSelector = "best[height<=480][ext=mp4]"
       } else if (quality === "360p") {
-        formatSelector = "best[height<=360]"
+        formatSelector = "best[height<=360][ext=mp4]"
       }
 
-      ytdlpArgs = ["--format", formatSelector, "--output", "-", "--no-warnings", videoUrl]
+      ytdlpArgs = [
+        "--format", 
+        formatSelector, 
+        "--output", 
+        "-", 
+        "--no-warnings",
+        "--no-check-certificate",
+        "--socket-timeout",
+        "30",
+        "--retries",
+        "3",
+        "--fragment-retries",
+        "3",
+        videoUrl
+      ]
     }
-
-    // Step 1: Get video metadata to find file size
-    const infoPath = process.env.YTDLP_PATH || "yt-dlp";
-    const infoProcess = spawn(infoPath, ["--dump-json", "--no-warnings", videoUrl]);
-
-    let jsonOutput = "";
-    for await (const chunk of infoProcess.stdout) {
-      jsonOutput += chunk;
-    }
-
-    const videoInfo = JSON.parse(jsonOutput);
-
-    let bestFormat: any = null;
-    if (format === "mp3") {
-      bestFormat = videoInfo.formats.find((f: any) => f.acodec !== 'none' && f.vcodec === 'none');
-    } else {
-      // A simple logic to find a format that is mp4 and has both video and audio
-      const qualityNum = parseInt(quality, 10);
-      bestFormat = videoInfo.formats
-        .filter((f: any) => f.vcodec !== 'none' && f.acodec !== 'none' && f.ext === 'mp4' && f.height <= qualityNum)
-        .sort((a: any, b: any) => b.height - a.height)[0];
-    }
-
-    if (!bestFormat) {
-      throw new Error("Could not find a suitable format to download.");
-    }
-
-    const size = bestFormat.filesize || bestFormat.filesize_approx || 0;
-    ytdlpArgs = [
-      "--format", bestFormat.format_id,
-      "--output", "-",
-      "--no-warnings",
-      "--no-check-certificate",
-      "--socket-timeout", "30",
-      "--retries", "3",
-      "--fragment-retries", "3",
-      videoUrl
-    ];
 
     console.log("Starting yt-dlp with args:", ytdlpArgs);
 
-    const ytdlpPath = process.env.YTDLP_PATH || "yt-dlp";
-    const ytdlp = spawn(ytdlpPath, ytdlpArgs);
+    const ytdlpPath = getYtdlpPath();
+    console.log("Using yt-dlp path:", ytdlpPath);
+    
+    const ytdlp = spawn(ytdlpPath, ytdlpArgs, {
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    let hasResolved = false;
+    let errorOutput = "";
 
     ytdlp.on("error", (error) => {
       console.error("yt-dlp spawn error:", error)
-      reject(new Error(`Failed to start yt-dlp: ${error.message}`))
+      if (!hasResolved) {
+        hasResolved = true;
+        reject(new Error(`Failed to start yt-dlp: ${error.message}. Make sure yt-dlp is installed and accessible at: ${ytdlpPath}`))
+      }
     })
 
     ytdlp.stderr.on("data", (data) => {
-      console.error("yt-dlp stderr:", data.toString())
+      const errorText = data.toString();
+      console.error("yt-dlp stderr:", errorText);
+      errorOutput += errorText;
+      
+      // Check for specific errors that indicate immediate failure
+      if (errorText.includes('Video unavailable') || 
+          errorText.includes('Private video') || 
+          errorText.includes('This video is not available')) {
+        if (!hasResolved) {
+          hasResolved = true;
+          ytdlp.kill('SIGKILL');
+          reject(new Error(`Video is not available: ${errorText.trim()}`));
+        }
+      }
     })
-
-    let hasResolved = false;
 
     ytdlp.on("close", (code) => {
       if (!hasResolved && code !== 0) {
-        reject(new Error(`yt-dlp exited with code ${code}`))
+        hasResolved = true;
+        reject(new Error(`yt-dlp exited with code ${code}. Error: ${errorOutput}`))
       }
     })
 
     // Set a timeout for the entire operation
     const timeoutId = setTimeout(() => {
       if (!hasResolved) {
+        hasResolved = true;
         ytdlp.kill('SIGKILL');
         reject(new Error('Download timeout - the video might be too long or the connection is slow'));
       }
     }, 300000); // 5 minutes timeout
 
-    // Return both stream and size
-    hasResolved = true;
-    clearTimeout(timeoutId);
-    resolve({ stream: ytdlp.stdout, size });
-    } catch (error) {
-      reject(error);
+    // Return stream immediately - let the response handle the data
+    if (!hasResolved) {
+      hasResolved = true;
+      clearTimeout(timeoutId);
+      console.log('yt-dlp process started, returning stream');
+      resolve({ stream: ytdlp.stdout, size: 0 });
     }
   });
 }
@@ -239,7 +240,9 @@ export async function getVideoInfoWithYtdlp(videoId: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`
 
-    const ytdlpPath = process.env.YTDLP_PATH || "yt-dlp";
+    const ytdlpPath = getYtdlpPath();
+    console.log("getVideoInfoWithYtdlp using yt-dlp path:", ytdlpPath);
+    
     const ytdlp = spawn(ytdlpPath, ["--dump-json", "--no-warnings", videoUrl]);
 
     let output = ""
@@ -277,15 +280,38 @@ export async function getVideoInfoWithYtdlp(videoId: string): Promise<any> {
 // Check if yt-dlp is installed
 export async function checkYtdlpInstallation(): Promise<boolean> {
   return new Promise((resolve) => {
-    const ytdlpPath = process.env.YTDLP_PATH || "yt-dlp";
-    const ytdlp = spawn(ytdlpPath, ["--version"]);
+    const ytdlpPath = getYtdlpPath();
+    console.log("Checking yt-dlp at path:", ytdlpPath);
+    
+    const ytdlp = spawn(ytdlpPath, ["--version"], {
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    let output = "";
+    let errorOutput = "";
+
+    ytdlp.stdout.on("data", (data) => {
+      output += data.toString();
+    });
+
+    ytdlp.stderr.on("data", (data) => {
+      errorOutput += data.toString();
+    });
 
     ytdlp.on("close", (code) => {
-      resolve(code === 0)
+      console.log("yt-dlp version check result:", { code, output, errorOutput });
+      resolve(code === 0 && output.trim().length > 0)
     })
 
-    ytdlp.on("error", () => {
+    ytdlp.on("error", (error) => {
+      console.error("yt-dlp version check error:", error);
       resolve(false)
     })
+
+    // Timeout after 5 seconds
+    setTimeout(() => {
+      ytdlp.kill('SIGKILL');
+      resolve(false);
+    }, 5000);
   })
 }

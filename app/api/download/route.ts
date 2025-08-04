@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { downloadVideo, sanitizeFilename } from "@/lib/youtube-downloader"
+import { downloadVideo, sanitizeFilename } from "../../../lib/youtube-downloader"
 
 // Increase timeout for long video downloads
 export const maxDuration = 300; // 5 minutes
@@ -47,7 +47,28 @@ export async function POST(request: NextRequest) {
     headers.set("Connection", "keep-alive")
 
     // تحويل stream إلى Response
-    return new Response(downloadStream as any, { headers });
+    // Create a ReadableStream from the Node.js stream
+    const readableStream = new ReadableStream({
+      start(controller) {
+        downloadStream.on('data', (chunk: Buffer) => {
+          controller.enqueue(new Uint8Array(chunk));
+        });
+        
+        downloadStream.on('end', () => {
+          controller.close();
+        });
+        
+        downloadStream.on('error', (error: Error) => {
+          controller.error(error);
+        });
+      },
+      
+      cancel() {
+        downloadStream.destroy();
+      }
+    });
+
+    return new Response(readableStream, { headers });
   } catch (error) {
     console.error("Download error:", error)
 

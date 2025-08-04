@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { extractPlaylistId, getPlaylistInfo } from "@/lib/youtube-api"
+import { extractPlaylistId, getPlaylistInfo } from "../../../lib/youtube-api"
 
 export async function POST(request: NextRequest) {
   try {

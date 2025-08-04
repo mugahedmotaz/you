@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { checkYtdlpInstallation } from "@/lib/youtube-downloader"
+import { checkYtdlpInstallation } from "../../../lib/youtube-downloader"
 
 export async function GET() {
   try {

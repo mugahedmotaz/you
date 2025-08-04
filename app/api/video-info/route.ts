@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getVideoInfoWithYtdlp, checkYtdlpInstallation } from "@/lib/youtube-downloader"
+import { getVideoInfoWithYtdlp, checkYtdlpInstallation } from "../../../lib/youtube-downloader"
 
 // Extract video ID from YouTube URL
 function extractVideoId(url: string): string | null {
