@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.env*
+*.log
+README.md
+.gitignore
+
+# Keep bin directory
+!bin/

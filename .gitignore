@@ -25,3 +25,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Keep bin directory with yt-dlp
+!bin/
+!bin/yt-dlp*

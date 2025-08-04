@@ -8,7 +8,7 @@ import { ErrorBoundary } from "@/components/error-boundary"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "YouTube Downloader - Download Videos & Playlists",
+  title: "Mugahed - Download Videos & Playlists",
   description: "Modern YouTube video and playlist downloader. Download videos in MP4 format or extract audio as MP3.",
   keywords: "youtube, downloader, video, audio, mp4, mp3, playlist",
     generator: 'v0.dev'

@@ -13,6 +13,7 @@ import { DownloadHistory } from "@/components/download-history"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { SuccessMessage } from "@/components/success-message"
 import { DownloadStatus } from "@/components/download-status"
+import Footer from "../components/footer"
 // استبدل هذا السطر:
 // import { RealApiStatus } from "@/components/real-api-status"
 // بهذا:
@@ -299,12 +300,12 @@ export default function HomePage() {
 
   const texts = {
     ar: {
-      title: "محمل فيديوهات YouTube",
-      description: "محمل حديث لفيديوهات وقوائم التشغيل من YouTube. احصل على معلومات حقيقية وروابط مباشرة.",
+      title: "محمل فيديوهات يوتيوب",
+      description: "محمل حديث لفيديوهات وقوائم التشغيل من يوتيوب. احصل على معلومات حقيقية وروابط مباشرة.",
       warning:
-        "يرجى التأكد من حصولك على إذن لتحميل المحتوى والامتثال لشروط خدمة YouTube والقوانين المعمول بها لحقوق الطبع والنشر.",
-      cardTitle: "معلومات فيديوهات وقوائم تشغيل YouTube",
-      placeholder: "الصق رابط YouTube هنا (فيديو أو قائمة تشغيل)...",
+        "يرجى التأكد من حصولك على إذن لتحميل المحتوى والامتثال لشروط خدمة يوتيوب والقوانين المعمول بها لحقوق الطبع والنشر.",
+      cardTitle: "معلومات فيديوهات وقوائم تشغيل يوتيوب",
+      placeholder: "الصق رابط يوتيوب هنا (فيديو أو قائمة تشغيل)...",
       fetchButton: "جلب المعلومات",
       fetching: "جاري الجلب...",
       videoDownloads: "معلومات الفيديوهات",
@@ -393,6 +394,9 @@ export default function HomePage() {
           <DownloadQueue downloads={downloads} onRemove={removeFromQueue} onRetry={retryDownload} />
         )}
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }
